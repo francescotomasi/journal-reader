@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+*.js.map
+
+# Backend temp files
+backend/uploads/
+backend/page-images/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Env
+.env
+.env.local
+
+# Design files (don't deploy)
+design/
+
+# Lock files (keep only package-lock.json)
+yarn.lock
+pnpm-lock.yaml

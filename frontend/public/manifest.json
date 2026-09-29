@@ -1,0 +1,17 @@
+{
+  "name": "Rassegna Giornali",
+  "short_name": "Rassegna",
+  "description": "La tua rassegna stampa personale",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f3ec",
+  "theme_color": "#f7f3ec",
+  "lang": "it",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

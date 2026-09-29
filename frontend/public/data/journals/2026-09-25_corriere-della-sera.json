@@ -1,0 +1,62 @@
+{
+  "id": "2026-09-25_corriere-della-sera",
+  "name": "Corriere della Sera",
+  "date": "2026-09-25",
+  "extractedAt": "2026-09-25T14:30:00Z",
+  "articles": [
+    {
+      "id": "art-1",
+      "title": "Manovra economica, il governo accelera: taglio del cuneo fiscale confermato per il 2027",
+      "subtitle": "Il ministro dell'Economia annuncia le linee guida della prossima legge di bilancio. Previsti interventi strutturali su lavoro e pensioni.",
+      "body": "Il governo ha presentato ieri le linee guida della manovra economica per il 2027, confermando il taglio strutturale del cuneo fiscale come misura cardine della prossima legge di bilancio. Il ministro dell'Economia, intervenendo in conferenza stampa a Palazzo Chigi, ha sottolineato che la riduzione del costo del lavoro sarà resa permanente, superando la logica dei rinnovi annuali che aveva caratterizzato le precedenti legislature.\n\nSecondo le stime del Tesoro, l'intervento sul cuneo fiscale comporterà un costo complessivo di circa 12 miliardi di euro, finanziati in parte attraverso la spending review e in parte con il maggior gettito derivante dalla crescita economica, stimata all'1,2 per cento per il prossimo anno.\n\nLe opposizioni hanno accolto con scetticismo l'annuncio, definendolo «un esercizio di ottimismo contabile» e chiedendo maggiori dettagli sulle coperture finanziarie. Il dibattito parlamentare sulla legge di bilancio è atteso per le prossime settimane.",
+      "category": "Economia",
+      "page": 1,
+      "isHighlight": true
+    },
+    {
+      "id": "art-2",
+      "title": "Intelligenza artificiale, l'Europa vara il primo regolamento mondiale: cosa cambia per le imprese",
+      "subtitle": "L'AI Act entra nella fase attuativa. Obblighi di trasparenza per i sistemi ad alto rischio e sanzioni fino al 7% del fatturato globale.",
+      "body": "L'Unione Europea ha compiuto un passo storico nell'ambito della regolamentazione dell'intelligenza artificiale con l'entrata in vigore delle prime disposizioni operative dell'AI Act, il regolamento che stabilisce le regole per lo sviluppo e l'utilizzo dei sistemi di intelligenza artificiale nel mercato europeo.\n\nLe nuove norme prevedono una classificazione dei sistemi di IA in base al livello di rischio, imponendo obblighi crescenti di trasparenza, documentazione e supervisione umana per le applicazioni considerate ad alto rischio, come quelle utilizzate nella selezione del personale, nel credit scoring e nella sorveglianza biometrica.\n\nPer le aziende italiane, la sfida principale riguarda l'adeguamento dei propri sistemi ai nuovi standard entro i tempi previsti dal regolamento. Confindustria ha istituito un tavolo tecnico per accompagnare le imprese nel percorso di conformità, evidenziando la necessità di investimenti significativi in formazione e infrastrutture tecnologiche.",
+      "category": "Tecnologia",
+      "page": 3,
+      "isHighlight": true
+    },
+    {
+      "id": "art-3",
+      "title": "Serie A, il Napoli vince il derby del Sud e consolida il primato in classifica",
+      "subtitle": "Decisiva la rete di Kvara al 78' che piega la resistenza della Roma. Contestazione dei tifosi giallorossi all'Olimpico.",
+      "body": "Il Napoli espugna lo Stadio Olimpico battendo la Roma per 1-0 grazie a un gol di Kvaratskhelia al 78' e consolida il primo posto in classifica con quattro punti di vantaggio sull'Inter, impegnata domani nel posticipo contro la Juventus.\n\nUna partita combattuta e tattica, risolta dalla giocata individuale del fantasista georgiano che ha ricevuto palla sulla fascia sinistra, ha saltato due avversari e ha concluso con un tiro a giro sul secondo palo che non ha lasciato scampo al portiere della Roma.\n\nNel finale i tifosi giallorossi hanno contestato duramente la squadra, chiedendo un cambio di rotta dopo il quarto risultato negativo nelle ultime cinque partite. L'allenatore della Roma ha difeso i suoi giocatori in conferenza stampa, ammettendo però che «servono rinforzi nel mercato di gennaio per essere competitivi».",
+      "category": "Sport",
+      "page": 31,
+      "isHighlight": false
+    },
+    {
+      "id": "art-4",
+      "title": "Maltempo, allerta arancione in Emilia-Romagna e Toscana: esondazioni e famiglie evacuate",
+      "subtitle": "Due fiumi superano il livello di guardia. La Protezione Civile dispone l'evacuazione precauzionale di 500 persone nella provincia di Ravenna.",
+      "body": "Una violenta ondata di maltempo ha colpito il Centro-Nord dell'Italia nelle ultime ore, provocando allagamenti, frane e disagi alla circolazione stradale e ferroviaria. Le regioni più colpite sono l'Emilia-Romagna e la Toscana, dove la Protezione Civile ha diramato un'allerta arancione.\n\nNella provincia di Ravenna, il Lamone e il Senio hanno superato il livello di guardia, costringendo le autorità a disporre l'evacuazione precauzionale di circa 500 persone residenti nelle zone rivierasche. I vigili del fuoco hanno effettuato oltre 200 interventi di soccorso nella sola giornata di ieri.\n\nIl presidente della Regione Emilia-Romagna ha chiesto la dichiarazione dello stato di emergenza, sottolineando che «siamo di fronte a eventi meteorologici sempre più frequenti e intensi che richiedono un piano strutturale di messa in sicurezza del territorio».",
+      "category": "Cronaca",
+      "page": 12,
+      "isHighlight": false
+    },
+    {
+      "id": "art-5",
+      "title": "Biennale di Venezia, il padiglione italiano conquista il Leone d'Oro con un'installazione sulla migrazione",
+      "subtitle": "L'opera dell'artista milanese racconta attraverso frammenti sonori e visivi le storie dei migranti nel Mediterraneo.",
+      "body": "Il padiglione italiano alla Biennale di Venezia ha conquistato il Leone d'Oro per la migliore partecipazione nazionale con un'installazione immersiva dell'artista milanese Lucia Ferranti, dedicata al tema delle migrazioni nel Mediterraneo.\n\nL'opera, intitolata «Mare Nostrum», trasforma lo spazio espositivo in un ambiente sonoro e visivo che avvolge il visitatore in un'esperienza sensoriale profonda. Frammenti di voci, suoni del mare e immagini proiettate su superfici liquide compongono una narrazione collettiva che dà voce a chi ha attraversato il Mediterraneo in cerca di una vita migliore.\n\nLa giuria ha definito l'installazione «un capolavoro di empatia e rigore formale che eleva l'arte contemporanea a strumento di consapevolezza civile». Ferranti, visibilmente commossa, ha dedicato il premio «a tutti coloro che il mare ha inghiottito e alle comunità che accolgono chi arriva».",
+      "category": "Cultura",
+      "page": 25,
+      "isHighlight": false
+    },
+    {
+      "id": "art-6",
+      "title": "Cambiamento climatico, nuovo record di temperature medie globali nel mese di agosto",
+      "subtitle": "L'Organizzazione Meteorologica Mondiale conferma: il 2026 si avvia a diventare l'anno più caldo mai registrato nella storia delle rilevazioni.",
+      "body": "Il mese di agosto 2026 ha stabilito un nuovo record per le temperature medie globali, superando di 1,6 gradi Celsius la media pre-industriale, secondo i dati pubblicati dall'Organizzazione Meteorologica Mondiale. È il quindicesimo mese consecutivo in cui viene superata la soglia di 1,5 gradi, il limite stabilito dall'Accordo di Parigi come obiettivo per contenere il riscaldamento globale.\n\nGli scienziati attribuiscono questo record alla combinazione del cambiamento climatico antropogenico con gli effetti residui del fenomeno El Niño, che ha amplificato le anomalie termiche in vaste aree del Pacifico e dell'Atlantico.\n\nIn Italia, l'estate 2026 è stata la più calda mai registrata dal 1800, con temperature medie superiori di 2,3 gradi rispetto alla norma climatica. Le ondate di calore hanno provocato un aumento significativo della mortalità tra la popolazione anziana, soprattutto nelle grandi città del Sud.",
+      "category": "Ambiente",
+      "page": 18,
+      "isHighlight": false
+    }
+  ]
+}

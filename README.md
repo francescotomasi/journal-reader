@@ -26,8 +26,6 @@ npm run dev
 ```
 Apri **http://localhost:5173/** nel browser.
 
-**Password:** `giornale2026`
-
 Da **iPhone** sulla stessa rete Wi-Fi: `http://192.168.1.251:5173/`
 
 ### 2. Backend (Upload e Estrazione AI)

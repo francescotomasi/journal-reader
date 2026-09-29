@@ -65,7 +65,9 @@ uploadRouter.post('/upload', upload.single('pdf'), async (req, res) => {
     // Step 2: Extract articles via AI
     sendStatus('extracting');
     console.log('🤖 Estrazione AI in corso...');
-    const extractionResult = await extractArticles(imagePaths);
+    const extractionResult = await extractArticles(imagePaths, (msg) => {
+      sendStatus('extracting_progress', { message: msg });
+    });
     console.log(`   ✅ ${extractionResult.articles.length} articoli estratti`);
 
     // Step 3: Save to frontend data directory
@@ -95,6 +97,67 @@ uploadRouter.post('/upload', upload.single('pdf'), async (req, res) => {
     res.end();
   } catch (err) {
     console.error('❌ Errore durante l\'elaborazione:', err);
+    sendStatus('error', { error: err instanceof Error ? err.message : 'Errore sconosciuto' });
+    res.end();
+  }
+});
+
+import { existsSync, readdirSync } from 'fs';
+
+uploadRouter.get('/status', (req, res) => {
+  const stateFile = path.join(__dirname, '..', '..', 'page-images', 'state.json');
+  res.json({ canResume: existsSync(stateFile) });
+});
+
+uploadRouter.post('/resume', async (req, res) => {
+  res.setHeader('Content-Type', 'application/x-ndjson');
+  res.setHeader('Transfer-Encoding', 'chunked');
+
+  const sendStatus = (status: string, extra?: Record<string, unknown>) => {
+    res.write(JSON.stringify({ status, ...extra }) + '\n');
+  };
+
+  try {
+    const pageImagesDir = path.join(__dirname, '..', '..', 'page-images');
+    const stateFile = path.join(pageImagesDir, 'state.json');
+
+    if (!existsSync(stateFile)) {
+      throw new Error('Nessuna estrazione interrotta trovata.');
+    }
+
+    const oldFiles = readdirSync(pageImagesDir).filter((f) => f.endsWith('.png'));
+    if (oldFiles.length === 0) {
+      throw new Error('Immagini non trovate.');
+    }
+
+    const imagePaths = oldFiles.map(f => path.join(pageImagesDir, f)).sort((a, b) => {
+      const numA = parseInt(path.basename(a).match(/\d+/)?.[0] || '0');
+      const numB = parseInt(path.basename(b).match(/\d+/)?.[0] || '0');
+      return numA - numB;
+    });
+
+    console.log('🔄 Ripresa estrazione AI in corso...');
+    sendStatus('extracting');
+    const extractionResult = await extractArticles(imagePaths, (msg) => {
+      sendStatus('extracting_progress', { message: msg });
+    });
+
+    sendStatus('saving');
+    const journalId = await saveJournal(extractionResult);
+    
+    sendStatus('pushing');
+    try {
+      await gitPush(extractionResult.newspaperName, extractionResult.date);
+    } catch (gitErr) {}
+
+    sendStatus('done', {
+      journalId,
+      articleCount: extractionResult.articles.length,
+      newspaperName: extractionResult.newspaperName,
+    });
+    res.end();
+  } catch (err) {
+    console.error('❌ Errore durante la ripresa:', err);
     sendStatus('error', { error: err instanceof Error ? err.message : 'Errore sconosciuto' });
     res.end();
   }

@@ -1,0 +1,3 @@
+1. Voglio che il mio sito viva nel web, e non su questo computer. Stavo pensando che gli uploads potrebbero essere gestiti su un google drive, o su github. I pdf presenti nella cartella /uploads possono essere scartati dopo che superano il limite massimo di spazio di archiviazione, e vorrei che si facesse automaticamente. Questo sito web deve avere una chiave di accesso, cossicchè solo io possa vederlo (stavo pensando a rendere il progetto privato su github, e cosi solo chi ha la mail può accedervi)
+2. Aggiungere le foto ove possibile
+3. Fare la prima pagina in una sezione a parte all'inizio degli articoli, invece di ignorarla completamente.

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { isLocalhost } from '../hooks/useJournals';
 
@@ -17,12 +17,25 @@ const STATUS_MESSAGES: Record<UploadStatus, string> = {
 export default function Upload() {
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<UploadStatus>('idle');
+  const [extractProgress, setExtractProgress] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [dragover, setDragover] = useState(false);
   const [articleCount, setArticleCount] = useState(0);
+  const [canResume, setCanResume] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isLocal = isLocalhost();
+
+  useEffect(() => {
+    if (isLocal) {
+      fetch('http://localhost:3001/api/status')
+        .then(res => res.json())
+        .then(data => {
+          if (data.canResume) setCanResume(true);
+        })
+        .catch(() => {});
+    }
+  }, [isLocal]);
 
   const handleFileChange = useCallback((selectedFile: File | null) => {
     if (selectedFile && selectedFile.type === 'application/pdf') {
@@ -32,6 +45,7 @@ export default function Upload() {
       }
       setFile(selectedFile);
       setErrorMessage('');
+      setExtractProgress('');
       setStatus('idle');
     } else if (selectedFile) {
       setErrorMessage('Seleziona un file PDF valido.');
@@ -53,6 +67,7 @@ export default function Upload() {
 
     try {
       setStatus('uploading');
+      setExtractProgress('');
       const formData = new FormData();
       formData.append('pdf', file);
 
@@ -82,7 +97,11 @@ export default function Upload() {
           for (const line of lines) {
             try {
               const update = JSON.parse(line);
-              if (update.status) setStatus(update.status as UploadStatus);
+              if (update.status === 'extracting_progress') {
+                setExtractProgress(update.message);
+              } else if (update.status) {
+                setStatus(update.status as UploadStatus);
+              }
               if (update.articleCount) setArticleCount(update.articleCount);
               if (update.error) {
                 setErrorMessage(update.error);
@@ -93,6 +112,61 @@ export default function Upload() {
               // Not JSON yet, continue
             }
           }
+          // Clear processed lines from buffer
+          result = '';
+        }
+      }
+
+      setStatus('done');
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'Errore sconosciuto');
+      setStatus('error');
+    }
+  };
+
+  const handleResume = async () => {
+    try {
+      setStatus('extracting');
+      setExtractProgress('Ripresa estrazione interrotta...');
+      setCanResume(false);
+
+      const res = await fetch('http://localhost:3001/api/resume', {
+        method: 'POST',
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: 'Errore del server' }));
+        throw new Error(data.error || 'Errore del server');
+      }
+
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (reader) {
+        let result = '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          result += decoder.decode(value, { stream: true });
+
+          const lines = result.split('\n').filter((l) => l.trim());
+          for (const line of lines) {
+            try {
+              const update = JSON.parse(line);
+              if (update.status === 'extracting_progress') {
+                setExtractProgress(update.message);
+              } else if (update.status) {
+                setStatus(update.status as UploadStatus);
+              }
+              if (update.articleCount) setArticleCount(update.articleCount);
+              if (update.error) {
+                setErrorMessage(update.error);
+                setStatus('error');
+                return;
+              }
+            } catch {}
+          }
+          result = '';
         }
       }
 
@@ -185,6 +259,11 @@ export default function Upload() {
             <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.85rem', color: status === 'error' ? 'var(--color-accent)' : status === 'done' ? '#166534' : 'var(--color-ink-muted)' }}>
               {status === 'error' ? errorMessage : STATUS_MESSAGES[status]}
             </p>
+            {status === 'extracting' && extractProgress && (
+              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8rem', color: 'var(--color-ink-muted)', marginTop: '0.25rem', fontStyle: 'italic' }}>
+                {extractProgress}
+              </p>
+            )}
             {status === 'done' && articleCount > 0 && (
               <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8rem', color: '#166534', marginTop: '0.25rem' }}>
                 {articleCount} articoli estratti con successo.

@@ -1,11 +1,11 @@
-import { exec } from 'child_process';
-import { writeFileSync, unlinkSync } from 'fs';
+import { writeFileSync, unlinkSync, createReadStream, existsSync, readFileSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// ... (keep ExtractionResult and EXTRACTION_PROMPT as they were) ...
 interface ExtractionResult {
   newspaperName: string;
   date: string;
@@ -72,59 +72,155 @@ Analizza ora le immagini delle pagine del giornale fornite e restituisci il JSON
  * Calls the Antigravity CLI (agy) with page images to extract articles via Gemini Vision.
  * Uses --print to run non-interactively, piping the prompt via stdin.
  */
-export async function extractArticles(imagePaths: string[]): Promise<ExtractionResult> {
-  const imageRefs = imagePaths
-    .map((p, i) => `![Pagina ${i + 1}](${p})`)
-    .join('\n\n');
+export async function extractArticles(imagePaths: string[], onProgress?: (msg: string) => void): Promise<ExtractionResult> {
+  const agyPath = await findAgyPath();
+  const BATCH_SIZE = 8;
+  const batches = [];
+  
+  for (let i = 0; i < imagePaths.length; i += BATCH_SIZE) {
+    batches.push(imagePaths.slice(i, i + BATCH_SIZE));
+  }
 
-  const fullPrompt = `${EXTRACTION_PROMPT}\n\n---\n\nLe pagine del giornale:\n\n${imageRefs}`;
+  console.log(`   Pagine totali: ${imagePaths.length}, diviso in ${batches.length} blocchi.`);
+  
+  let allArticles: any[] = [];
+  let newspaperName = 'Sconosciuto';
+  let date = new Date().toISOString().split('T')[0];
+  let startBatch = 0;
 
-  // Write prompt to a temp file (too long for command line args)
-  const promptFile = path.join(__dirname, '..', '..', 'page-images', '_prompt.md');
-  writeFileSync(promptFile, fullPrompt, 'utf-8');
-
-  try {
-    const agyPath = await findAgyPath();
-
-    console.log(`   Usando agy: ${agyPath}`);
-    console.log(`   Pagine da analizzare: ${imagePaths.length}`);
-
-    // Pipe the prompt file directly into agy via stdin.
-    // --dangerously-skip-permissions to run non-interactively without prompting
-    const command = `cat "${promptFile}" | ${agyPath} --model "Gemini 3.8 Flash (High)" --dangerously-skip-permissions`;
-
-    const result = await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
-      exec(command, {
-        timeout: 10 * 60 * 1000, // 10 minutes for large newspapers
-        maxBuffer: 50 * 1024 * 1024, // 50 MB buffer
-        env: { ...process.env },
-      }, (error, stdout, stderr) => {
-        if (error) {
-          console.error(`\n[AGY EXEC ERROR]`);
-          console.error(`Code: ${error.code}`);
-          console.error(`Message: ${error.message}`);
-          console.error(`STDOUT:\n${stdout.substring(0, 1000)}`);
-          console.error(`STDERR:\n${stderr.substring(0, 1000)}\n`);
-          reject(new Error(`agy fallito con codice ${error.code}.\nMessage: ${error.message}\nStderr: ${stderr}`));
-        } else {
-          resolve({ stdout, stderr });
-        }
-      });
-    });
-
-    if (result.stderr) {
-      console.warn('   agy stderr:', result.stderr.substring(0, 500));
-    }
-
-    const jsonResult = extractJsonFromResponse(result.stdout);
-    return jsonResult;
-  } finally {
+  const stateFile = path.join(__dirname, '..', '..', 'page-images', 'state.json');
+  if (existsSync(stateFile)) {
     try {
-      unlinkSync(promptFile);
-    } catch {
-      // Ignore cleanup errors
+      const state = JSON.parse(readFileSync(stateFile, 'utf-8'));
+      startBatch = state.completedBatches || 0;
+      allArticles = state.allArticles || [];
+      newspaperName = state.newspaperName || newspaperName;
+      date = state.date || date;
+      console.log(`   Ripresa estrazione dal blocco ${startBatch + 1}...`);
+    } catch (e) {
+      console.warn("   ⚠️ Impossibile leggere state.json, ricomincio da capo.");
     }
   }
+
+  let totalArticlesFound = allArticles.length;
+
+  for (let b = startBatch; b < batches.length; b++) {
+    const batchImages = batches[b];
+    if (onProgress) {
+      onProgress(`Analisi blocco ${b + 1} di ${batches.length} (${batchImages.length} pagine)... [Articoli totali finora: ${totalArticlesFound}]`);
+    }
+
+    const imageRefs = batchImages.map((p, i) => `![Pagina ${i + 1 + (b * BATCH_SIZE)}](${p})`).join('\n\n');
+    const fullPrompt = `${EXTRACTION_PROMPT}\n\n---\n\nATTENZIONE: Stai analizzando il blocco ${b + 1} di ${batches.length} del giornale. Le pagine incluse in questo blocco sono le pagine da ${1 + (b * BATCH_SIZE)} a ${batchImages.length + (b * BATCH_SIZE)}.\n\nLe pagine del giornale:\n\n${imageRefs}`;
+    
+    const promptFile = path.join(__dirname, '..', '..', 'page-images', `_prompt_${b}.md`);
+    writeFileSync(promptFile, fullPrompt, 'utf-8');
+
+    try {
+      console.log(`   Analizzando blocco ${b + 1}/${batches.length}...`);
+      const result = await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
+        import('child_process').then(({ spawn }) => {
+          const agyProcess = spawn(agyPath, ['--model', 'Gemini 3.1 Pro (High)', '--dangerously-skip-permissions'], {
+            env: { ...process.env },
+          });
+
+          const readStream = createReadStream(promptFile);
+          readStream.pipe(agyProcess.stdin);
+
+          let stdout = '';
+          let stderr = '';
+
+          let timeoutHandle: NodeJS.Timeout;
+
+          agyProcess.stdout.on('data', (data) => {
+            const chunk = data.toString();
+            stdout += chunk;
+            
+            if (onProgress) {
+               const currentBatchArticles = (stdout.match(/"title"\s*:/g) || []).length;
+               onProgress(`Analisi blocco ${b + 1}/${batches.length}... [Articoli trovati: ${totalArticlesFound + currentBatchArticles}]`);
+            }
+          });
+
+          agyProcess.stderr.on('data', (data) => {
+            stderr += data.toString();
+          });
+
+          agyProcess.on('close', (code) => {
+            clearTimeout(timeoutHandle);
+            if (code !== 0 && code !== null) {
+              console.error(`\n[AGY EXEC ERROR BLOCCO ${b + 1}]`);
+              console.error(`Code: ${code}`);
+              console.error(`STDOUT:\n${stdout.substring(0, 1000)}`);
+              console.error(`STDERR:\n${stderr.substring(0, 1000)}\n`);
+              reject(new Error(`agy fallito con codice ${code}.\nStderr: ${stderr}`));
+            } else {
+              resolve({ stdout, stderr });
+            }
+          });
+
+          agyProcess.on('error', (err) => {
+            clearTimeout(timeoutHandle);
+            reject(err);
+          });
+
+          // Timeout in case the network hangs (e.g. sleep mode)
+          timeoutHandle = setTimeout(() => {
+            agyProcess.kill('SIGKILL');
+            reject(new Error(`Timeout: l'elaborazione del blocco ${b + 1} ha impiegato troppo tempo (possibile interruzione di rete).`));
+          }, 10 * 60 * 1000); // 10 minutes timeout per batch
+        }).catch(reject);
+      });
+
+      try {
+        const batchJson = extractJsonFromResponse(result.stdout);
+        
+        if (b === 0 || newspaperName === 'Sconosciuto') {
+          newspaperName = batchJson.newspaperName || newspaperName;
+          date = batchJson.date || date;
+        }
+
+        allArticles.push(...batchJson.articles);
+        totalArticlesFound = allArticles.length;
+
+        // Save progress state
+        writeFileSync(stateFile, JSON.stringify({
+          completedBatches: b + 1,
+          allArticles,
+          newspaperName,
+          date
+        }), 'utf-8');
+
+      } catch (parseErr) {
+        console.warn(`   ⚠️ Errore parsing JSON per il blocco ${b + 1}:`, parseErr);
+        throw parseErr; // Throw to trigger outer catch and avoid marking block as completed
+      }
+    } finally {
+      try {
+        unlinkSync(promptFile);
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
+  }
+
+  // Se è arrivato alla fine senza errori, elimina il file di stato
+  if (existsSync(stateFile)) {
+    try {
+      unlinkSync(stateFile);
+    } catch {}
+  }
+
+  // Rimuovi duplicati (stesso titolo esatto)
+  const uniqueArticles = allArticles.filter((article, index, self) =>
+    index === self.findIndex((a) => a.title.toLowerCase().trim() === article.title.toLowerCase().trim())
+  );
+
+  return {
+    newspaperName,
+    date,
+    articles: uniqueArticles.map((a, i) => ({ ...a, id: `art-${i + 1}` }))
+  };
 }
 
 /**

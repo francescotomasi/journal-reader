@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import SHA256 from 'crypto-js/sha256';
 
 const PASSWORD_KEY = 'journal_reader_auth';
-const CORRECT_PASSWORD = 'giornale2026';
+// SHA-256 of "giornale2026"
+const CORRECT_HASH = '245ba69cce54ea10b45189da65d0c12846cd9ec19adb17ffae02b19719c5bea7';
 
 interface PasswordGateProps {
   children: React.ReactNode;
@@ -21,9 +23,12 @@ export default function PasswordGate({ children }: PasswordGateProps) {
     setChecking(false);
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === CORRECT_PASSWORD) {
+    // Hash the user's input with crypto-js
+    const inputHash = SHA256(password).toString();
+    
+    if (inputHash === CORRECT_HASH) {
       localStorage.setItem(PASSWORD_KEY, 'true');
       setAuthenticated(true);
       setError(false);

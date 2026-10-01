@@ -1,6 +1,13 @@
 {
   "journals": [
     {
+      "id": "2026-10-01_corriere-della-sera",
+      "name": "Corriere della Sera",
+      "date": "2026-10-01",
+      "articleCount": 146,
+      "file": "2026-10-01_corriere-della-sera.json"
+    },
+    {
       "id": "2026-09-29_corriere-della-sera",
       "name": "Corriere della Sera",
       "date": "2026-09-29",

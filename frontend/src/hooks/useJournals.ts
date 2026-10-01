@@ -3,17 +3,30 @@ import type { Journal, JournalIndex, JournalIndexEntry } from '../types/article'
 
 const BASE_URL = import.meta.env.BASE_URL || '/';
 
+// Simple in-memory cache to prevent re-fetching on back navigation
+const indexCache: { data: JournalIndexEntry[] | null; timestamp: number } = { data: null, timestamp: 0 };
+const journalCache: Record<string, { data: Journal | null; timestamp: number }> = {};
+const CACHE_TTL = 1000 * 60 * 5; // 5 minutes
+
 export function useJournalIndex() {
-  const [index, setIndex] = useState<JournalIndexEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [index, setIndex] = useState<JournalIndexEntry[]>(indexCache.data || []);
+  const [loading, setLoading] = useState(!indexCache.data);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (force = false) => {
+    if (!force && indexCache.data && Date.now() - indexCache.timestamp < CACHE_TTL) {
+      setIndex(indexCache.data);
+      setLoading(false);
+      return;
+    }
+
     try {
-      setLoading(true);
+      if (!indexCache.data) setLoading(true);
       const res = await fetch(`${BASE_URL}data/journals/index.json`);
       if (!res.ok) throw new Error('Impossibile caricare l\'indice dei giornali');
       const data: JournalIndex = await res.json();
+      indexCache.data = data.journals;
+      indexCache.timestamp = Date.now();
       setIndex(data.journals);
       setError(null);
     } catch (err) {
@@ -30,8 +43,9 @@ export function useJournalIndex() {
 }
 
 export function useJournal(journalId: string | undefined) {
-  const [journal, setJournal] = useState<Journal | null>(null);
-  const [loading, setLoading] = useState(true);
+  const cachedJournal = journalId ? journalCache[journalId]?.data : null;
+  const [journal, setJournal] = useState<Journal | null>(cachedJournal || null);
+  const [loading, setLoading] = useState(journalId ? !cachedJournal : false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -41,11 +55,18 @@ export function useJournal(journalId: string | undefined) {
     }
 
     const load = async () => {
+      if (journalCache[journalId]?.data && Date.now() - journalCache[journalId].timestamp < CACHE_TTL) {
+        setJournal(journalCache[journalId].data);
+        setLoading(false);
+        return;
+      }
+
       try {
-        setLoading(true);
+        if (!journalCache[journalId]?.data) setLoading(true);
         const res = await fetch(`${BASE_URL}data/journals/${journalId}.json`);
         if (!res.ok) throw new Error('Giornale non trovato');
         const data: Journal = await res.json();
+        journalCache[journalId] = { data, timestamp: Date.now() };
         setJournal(data);
         setError(null);
       } catch (err) {

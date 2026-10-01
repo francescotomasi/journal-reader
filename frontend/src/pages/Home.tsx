@@ -1,9 +1,12 @@
 import { Link } from 'react-router-dom';
 import { useLatestJournal, isLocalhost } from '../hooks/useJournals';
+import { useScrollRestoration } from '../hooks/useScrollRestoration';
 import type { Article } from '../types/article';
 
 export default function Home() {
   const { journal, loading, error, hasJournals } = useLatestJournal();
+  
+  useScrollRestoration(loading);
 
   if (loading) {
     return (

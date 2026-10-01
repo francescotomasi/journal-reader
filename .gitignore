@@ -27,3 +27,6 @@ design/
 # Lock files (keep only package-lock.json)
 yarn.lock
 pnpm-lock.yaml
+backend/venv/
+backend/output.json
+frontend/tsconfig.tsbuildinfo

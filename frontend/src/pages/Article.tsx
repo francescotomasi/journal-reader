@@ -1,9 +1,15 @@
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useJournal } from '../hooks/useJournals';
+import { useEffect } from 'react';
 
 export default function ArticlePage() {
   const { journalId, articleId } = useParams<{ journalId: string; articleId: string }>();
   const { journal, loading, error } = useJournal(journalId);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [articleId]);
 
   if (loading) {
     return (
@@ -19,14 +25,15 @@ export default function ArticlePage() {
         <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--color-ink)' }}>
           Articolo non trovato.
         </p>
-        <Link to="/" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', color: 'var(--color-accent)' }}>
-          ← Torna alla rassegna
-        </Link>
+        <button onClick={() => navigate(-1)} style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', color: 'var(--color-accent)', background: 'none', border: 'none', cursor: 'pointer' }}>
+          ← Torna indietro
+        </button>
       </div>
     );
   }
 
-  const article = journal.articles.find((a) => a.id === articleId);
+  const currentIndex = journal.articles.findIndex((a) => a.id === articleId);
+  const article = journal.articles[currentIndex];
 
   if (!article) {
     return (
@@ -34,14 +41,16 @@ export default function ArticlePage() {
         <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--color-ink)' }}>
           Articolo non trovato.
         </p>
-        <Link to="/" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', color: 'var(--color-accent)' }}>
-          ← Torna alla rassegna
-        </Link>
+        <button onClick={() => navigate(-1)} style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', color: 'var(--color-accent)', background: 'none', border: 'none', cursor: 'pointer' }}>
+          ← Torna indietro
+        </button>
       </div>
     );
   }
 
-  // Split body into paragraphs
+  const prevArticle = currentIndex > 0 ? journal.articles[currentIndex - 1] : null;
+  const nextArticle = currentIndex < journal.articles.length - 1 ? journal.articles[currentIndex + 1] : null;
+
   const paragraphs = article.body.split('\n\n').filter((p) => p.trim().length > 0);
 
   return (
@@ -49,12 +58,12 @@ export default function ArticlePage() {
       {/* Sticky top bar */}
       <div style={{ borderBottom: '1px solid var(--color-rule)', backgroundColor: 'var(--color-paper)', position: 'sticky', top: 0, zIndex: 50 }}>
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Link
-            to={journalId ? `/archivio/${journalId}` : '/'}
-            style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem', textDecoration: 'none' }}
+          <button
+            onClick={() => navigate(-1)}
+            style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'none', border: 'none', cursor: 'pointer' }}
           >
-            <span style={{ fontSize: '0.9rem' }}>←</span> Rassegna
-          </Link>
+            <span style={{ fontSize: '0.9rem' }}>←</span> Indietro
+          </button>
           <Link
             to="/"
             style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', fontWeight: 900, color: 'var(--color-ink)', textDecoration: 'none' }}
@@ -66,7 +75,6 @@ export default function ArticlePage() {
       </div>
 
       <article className="max-w-3xl mx-auto px-4 py-8">
-        {/* Category */}
         {article.category && (
           <div style={{ marginBottom: '0.75rem' }}>
             <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.68rem', fontWeight: 600, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--color-accent)', borderBottom: '2px solid var(--color-accent)', paddingBottom: '2px' }}>
@@ -75,19 +83,16 @@ export default function ArticlePage() {
           </div>
         )}
 
-        {/* Headline */}
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.8rem, 6vw, 3rem)', fontWeight: 700, lineHeight: 1.15, color: 'var(--color-ink)', marginBottom: '0.75rem' }}>
           {article.title}
         </h1>
 
-        {/* Subtitle */}
         {article.subtitle && (
           <p style={{ fontFamily: 'var(--font-body)', fontSize: 'clamp(1rem, 2.5vw, 1.2rem)', fontStyle: 'italic', lineHeight: 1.55, color: 'var(--color-ink-muted)', marginBottom: '1.25rem', borderLeft: '3px solid var(--color-rule)', paddingLeft: '1rem' }}>
             {article.subtitle}
           </p>
         )}
 
-        {/* Meta info */}
         <div style={{ borderTop: '1px solid var(--color-rule)', borderBottom: '1px solid var(--color-rule)', padding: '0.75rem 0', marginBottom: '1.75rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', justifyContent: 'space-between' }}>
           {article.page && (
             <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-ink)' }}>
@@ -99,7 +104,6 @@ export default function ArticlePage() {
           </span>
         </div>
 
-        {/* Body */}
         <div
           className="article-body"
           style={{ fontFamily: 'var(--font-body)', fontSize: 'clamp(1rem, 2.5vw, 1.1rem)', color: 'var(--color-ink)', maxWidth: '65ch', marginLeft: 'auto', marginRight: 'auto' }}
@@ -109,14 +113,48 @@ export default function ArticlePage() {
           ))}
         </div>
 
-        {/* Footer rule */}
-        <div style={{ borderTop: '3px double var(--color-rule)', marginTop: '3rem', paddingTop: '1.5rem', textAlign: 'center' }}>
-          <Link
-            to={journalId ? `/archivio/${journalId}` : '/'}
-            style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-ink-muted)', textDecoration: 'none' }}
-          >
-            ← Torna alla rassegna
-          </Link>
+        {/* Navigation Footer */}
+        <div style={{ borderTop: '3px double var(--color-rule)', marginTop: '3rem', paddingTop: '1.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+            {prevArticle ? (
+              <Link
+                to={`/articolo/${journal.id}/${prevArticle.id}`}
+                style={{ flex: 1, textDecoration: 'none', minWidth: '200px' }}
+                replace
+              >
+                <div style={{ fontFamily: 'var(--font-sans)', fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--color-ink-muted)', marginBottom: '0.25rem' }}>
+                  ← Precedente
+                </div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', fontWeight: 700, color: 'var(--color-ink)' }}>
+                  {prevArticle.title}
+                </div>
+              </Link>
+            ) : <div style={{ flex: 1 }} />}
+
+            {nextArticle ? (
+              <Link
+                to={`/articolo/${journal.id}/${nextArticle.id}`}
+                style={{ flex: 1, textDecoration: 'none', textAlign: 'right', minWidth: '200px' }}
+                replace
+              >
+                <div style={{ fontFamily: 'var(--font-sans)', fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--color-ink-muted)', marginBottom: '0.25rem' }}>
+                  Successivo →
+                </div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', fontWeight: 700, color: 'var(--color-ink)' }}>
+                  {nextArticle.title}
+                </div>
+              </Link>
+            ) : <div style={{ flex: 1 }} />}
+          </div>
+          
+          <div style={{ textAlign: 'center', marginTop: '2.5rem' }}>
+            <button
+              onClick={() => navigate(-1)}
+              style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-ink-muted)', background: 'none', border: 'none', cursor: 'pointer' }}
+            >
+              ← Torna all'elenco
+            </button>
+          </div>
         </div>
       </article>
     </div>

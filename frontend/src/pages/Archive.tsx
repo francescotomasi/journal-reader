@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router-dom';
 import { useJournalIndex, useJournal } from '../hooks/useJournals';
 import { isLocalhost } from '../hooks/useJournals';
+import { useScrollRestoration } from '../hooks/useScrollRestoration';
 
 export default function Archive() {
   const { journalId } = useParams<{ journalId: string }>();
@@ -14,6 +15,8 @@ export default function Archive() {
 
 function ArchiveList() {
   const { index, loading, error } = useJournalIndex();
+  
+  useScrollRestoration(loading);
 
   if (loading) {
     return (
@@ -86,6 +89,8 @@ function ArchiveList() {
 
 function JournalDetail({ journalId }: { journalId: string }) {
   const { journal, loading, error } = useJournal(journalId);
+  
+  useScrollRestoration(loading);
 
   if (loading) {
     return (

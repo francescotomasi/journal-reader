@@ -75,45 +75,45 @@ Analizza ora le immagini delle pagine del giornale fornite e restituisci il JSON
 export async function extractArticles(imagePaths: string[], onProgress?: (msg: string) => void): Promise<ExtractionResult> {
   const agyPath = await findAgyPath();
   const BATCH_SIZE = 8;
-  const batches = [];
+  const batches: string[][] = [];
   
   for (let i = 0; i < imagePaths.length; i += BATCH_SIZE) {
-    batches.push(imagePaths.slice(i, i + BATCH_SIZE));
+    const startIdx = i === 0 ? 0 : i - 1;
+    const endIdx = i + BATCH_SIZE;
+    batches.push(imagePaths.slice(startIdx, endIdx));
   }
 
-  console.log(`   Pagine totali: ${imagePaths.length}, diviso in ${batches.length} blocchi.`);
+  console.log(`   Pagine totali: ${imagePaths.length}, diviso in ${batches.length} blocchi (con sovrapposizione).`);
   
-  let allArticles: any[] = [];
-  let newspaperName = 'Sconosciuto';
-  let date = new Date().toISOString().split('T')[0];
+  const workDir = path.join(__dirname, '..', '..', 'page-images');
   let startBatch = 0;
-
-  const stateFile = path.join(__dirname, '..', '..', 'page-images', 'state.json');
-  if (existsSync(stateFile)) {
-    try {
-      const state = JSON.parse(readFileSync(stateFile, 'utf-8'));
-      startBatch = state.completedBatches || 0;
-      allArticles = state.allArticles || [];
-      newspaperName = state.newspaperName || newspaperName;
-      date = state.date || date;
-      console.log(`   Ripresa estrazione dal blocco ${startBatch + 1}...`);
-    } catch (e) {
-      console.warn("   ⚠️ Impossibile leggere state.json, ricomincio da capo.");
+  
+  for (let b = 0; b < batches.length; b++) {
+    const batchFile = path.join(workDir, `batch_${b}.json`);
+    if (existsSync(batchFile)) {
+      startBatch = b + 1;
+    } else {
+      break;
     }
   }
 
-  let totalArticlesFound = allArticles.length;
+  if (startBatch > 0 && startBatch < batches.length) {
+    console.log(`   Ripresa estrazione dal blocco ${startBatch + 1}...`);
+  }
 
   for (let b = startBatch; b < batches.length; b++) {
     const batchImages = batches[b];
     if (onProgress) {
-      onProgress(`Analisi blocco ${b + 1} di ${batches.length} (${batchImages.length} pagine)... [Articoli totali finora: ${totalArticlesFound}]`);
+      onProgress(`Analisi blocco ${b + 1} di ${batches.length} (${batchImages.length} pagine)...`);
     }
 
-    const imageRefs = batchImages.map((p, i) => `![Pagina ${i + 1 + (b * BATCH_SIZE)}](${p})`).join('\n\n');
-    const fullPrompt = `${EXTRACTION_PROMPT}\n\n---\n\nATTENZIONE: Stai analizzando il blocco ${b + 1} di ${batches.length} del giornale. Le pagine incluse in questo blocco sono le pagine da ${1 + (b * BATCH_SIZE)} a ${batchImages.length + (b * BATCH_SIZE)}.\n\nLe pagine del giornale:\n\n${imageRefs}`;
+    const startPageNum = (b === 0 ? 1 : (b * BATCH_SIZE));
+    const endPageNum = startPageNum + batchImages.length - 1;
+
+    const imageRefs = batchImages.map((p, i) => `![Pagina ${startPageNum + i}](${p})`).join('\n\n');
+    const fullPrompt = `${EXTRACTION_PROMPT}\n\n---\n\nATTENZIONE: Stai analizzando il blocco ${b + 1} di ${batches.length} del giornale. Le pagine incluse in questo blocco sono le pagine da ${startPageNum} a ${endPageNum}.\n\nLe pagine del giornale:\n\n${imageRefs}`;
     
-    const promptFile = path.join(__dirname, '..', '..', 'page-images', `_prompt_${b}.md`);
+    const promptFile = path.join(workDir, `_prompt_${b}.md`);
     writeFileSync(promptFile, fullPrompt, 'utf-8');
 
     try {
@@ -129,7 +129,6 @@ export async function extractArticles(imagePaths: string[], onProgress?: (msg: s
 
           let stdout = '';
           let stderr = '';
-
           let timeoutHandle: NodeJS.Timeout;
 
           agyProcess.stdout.on('data', (data) => {
@@ -138,7 +137,7 @@ export async function extractArticles(imagePaths: string[], onProgress?: (msg: s
             
             if (onProgress) {
                const currentBatchArticles = (stdout.match(/"title"\s*:/g) || []).length;
-               onProgress(`Analisi blocco ${b + 1}/${batches.length}... [Articoli trovati: ${totalArticlesFound + currentBatchArticles}]`);
+               onProgress(`Analisi blocco ${b + 1}/${batches.length}... [Articoli parziali trovati nel blocco: ${currentBatchArticles}]`);
             }
           });
 
@@ -164,36 +163,20 @@ export async function extractArticles(imagePaths: string[], onProgress?: (msg: s
             reject(err);
           });
 
-          // Timeout in case the network hangs (e.g. sleep mode)
           timeoutHandle = setTimeout(() => {
             agyProcess.kill('SIGKILL');
             reject(new Error(`Timeout: l'elaborazione del blocco ${b + 1} ha impiegato troppo tempo (possibile interruzione di rete).`));
-          }, 10 * 60 * 1000); // 10 minutes timeout per batch
+          }, 10 * 60 * 1000);
         }).catch(reject);
       });
 
       try {
         const batchJson = extractJsonFromResponse(result.stdout);
-        
-        if (b === 0 || newspaperName === 'Sconosciuto') {
-          newspaperName = batchJson.newspaperName || newspaperName;
-          date = batchJson.date || date;
-        }
-
-        allArticles.push(...batchJson.articles);
-        totalArticlesFound = allArticles.length;
-
-        // Save progress state
-        writeFileSync(stateFile, JSON.stringify({
-          completedBatches: b + 1,
-          allArticles,
-          newspaperName,
-          date
-        }), 'utf-8');
-
+        const batchFile = path.join(workDir, `batch_${b}.json`);
+        writeFileSync(batchFile, JSON.stringify(batchJson, null, 2), 'utf-8');
       } catch (parseErr) {
         console.warn(`   ⚠️ Errore parsing JSON per il blocco ${b + 1}:`, parseErr);
-        throw parseErr; // Throw to trigger outer catch and avoid marking block as completed
+        throw parseErr;
       }
     } finally {
       try {
@@ -204,17 +187,38 @@ export async function extractArticles(imagePaths: string[], onProgress?: (msg: s
     }
   }
 
-  // Se è arrivato alla fine senza errori, elimina il file di stato
-  if (existsSync(stateFile)) {
-    try {
-      unlinkSync(stateFile);
-    } catch {}
+  let allArticles: any[] = [];
+  let newspaperName = 'Sconosciuto';
+  let date = new Date().toISOString().split('T')[0];
+
+  for (let b = 0; b < batches.length; b++) {
+    const batchFile = path.join(workDir, `batch_${b}.json`);
+    if (existsSync(batchFile)) {
+      const data = JSON.parse(readFileSync(batchFile, 'utf-8'));
+      if (b === 0) {
+        newspaperName = data.newspaperName || newspaperName;
+        date = data.date || date;
+      }
+      allArticles.push(...(data.articles || []));
+      try { unlinkSync(batchFile); } catch {}
+    }
   }
 
-  // Rimuovi duplicati (stesso titolo esatto)
-  const uniqueArticles = allArticles.filter((article, index, self) =>
-    index === self.findIndex((a) => a.title.toLowerCase().trim() === article.title.toLowerCase().trim())
-  );
+  const stateFile = path.join(workDir, 'state.json');
+  if (existsSync(stateFile)) {
+    try { unlinkSync(stateFile); } catch {}
+  }
+
+  const mergedMap = new Map<string, any>();
+  for (const article of allArticles) {
+    const key = article.title.toLowerCase().trim();
+    const existing = mergedMap.get(key);
+    if (!existing || ((article.body?.length || 0) > (existing.body?.length || 0))) {
+      mergedMap.set(key, article);
+    }
+  }
+
+  const uniqueArticles = Array.from(mergedMap.values());
 
   return {
     newspaperName,
@@ -254,38 +258,79 @@ function extractJsonFromResponse(response: string): ExtractionResult {
     cleaned = jsonBlockMatch[1].trim();
   }
 
-  // Try to find the JSON object directly
   const jsonStart = cleaned.indexOf('{');
-  const jsonEnd = cleaned.lastIndexOf('}');
-
-  if (jsonStart === -1 || jsonEnd === -1) {
+  if (jsonStart === -1) {
     throw new Error('Nessun JSON trovato nella risposta dell\'AI. Risposta ricevuta:\n' + cleaned.substring(0, 500));
   }
 
-  cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
+  const candidates = [
+    cleaned.substring(jsonStart),
+    cleaned.substring(jsonStart, cleaned.lastIndexOf('}') + 1)
+  ];
 
-  try {
-    const parsed = JSON.parse(cleaned);
+  let parsed: any = null;
 
-    if (!parsed.newspaperName || !parsed.date || !Array.isArray(parsed.articles)) {
-      throw new Error('Il JSON restituito non ha la struttura attesa (newspaperName, date, articles).');
+  for (let candidate of candidates) {
+    try {
+      parsed = JSON.parse(candidate);
+      break;
+    } catch (e) {
+      try {
+        parsed = repairJSON(candidate);
+        break;
+      } catch (repairErr) {
+        continue;
+      }
     }
-
-    parsed.articles = parsed.articles.map((article: Record<string, unknown>, index: number) => ({
-      id: article.id || `art-${index + 1}`,
-      title: article.title || 'Senza titolo',
-      subtitle: article.subtitle || '',
-      body: article.body || '',
-      category: article.category || undefined,
-      page: typeof article.page === 'number' ? article.page : undefined,
-      isHighlight: Boolean(article.isHighlight),
-    }));
-
-    return parsed as ExtractionResult;
-  } catch (err) {
-    if (err instanceof SyntaxError) {
-      throw new Error('JSON non valido nella risposta dell\'AI. Potrebbe essere necessario riprovare.\nErrore: ' + err.message);
-    }
-    throw err;
   }
+
+  if (!parsed) {
+    throw new Error('JSON non valido nella risposta dell\'AI. Potrebbe essere necessario riprovare.');
+  }
+
+  if (!parsed.newspaperName || !parsed.date || !Array.isArray(parsed.articles)) {
+    parsed.newspaperName = parsed.newspaperName || 'Sconosciuto';
+    parsed.date = parsed.date || new Date().toISOString().split('T')[0];
+    parsed.articles = Array.isArray(parsed.articles) ? parsed.articles : [];
+  }
+
+  parsed.articles = parsed.articles.map((article: Record<string, unknown>, index: number) => ({
+    id: article.id || `art-${index + 1}`,
+    title: article.title || 'Senza titolo',
+    subtitle: article.subtitle || '',
+    body: article.body || '',
+    category: article.category || undefined,
+    page: typeof article.page === 'number' ? article.page : undefined,
+    isHighlight: Boolean(article.isHighlight),
+  }));
+
+  return parsed as ExtractionResult;
+}
+
+function repairJSON(str: string): any {
+  let current = str.trim();
+  const stringCount = (current.match(/(?<!\\)"/g) || []).length;
+  if (stringCount % 2 !== 0) {
+    current += '"';
+  }
+  
+  const suffixes = ['', '}', ']}', '}]}', '}}]}'];
+  
+  for (const suffix of suffixes) {
+    try {
+      return JSON.parse(current + suffix);
+    } catch (e) {}
+  }
+  
+  const lastComma = current.lastIndexOf(',');
+  if (lastComma !== -1) {
+    let truncated = current.substring(0, lastComma);
+    for (const suffix of suffixes) {
+      try {
+        return JSON.parse(truncated + suffix);
+      } catch (e) {}
+    }
+  }
+  
+  throw new Error("Cannot repair JSON");
 }

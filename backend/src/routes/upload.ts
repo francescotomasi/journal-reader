@@ -73,7 +73,7 @@ uploadRouter.post('/upload', upload.single('pdf'), async (req, res) => {
     // Step 3: Save to frontend data directory
     sendStatus('saving');
     console.log('💾 Salvataggio dati...');
-    const journalId = await saveJournal(extractionResult);
+    const journalId = await saveJournal(extractionResult, imagePaths);
     console.log(`   ✅ Salvato come ${journalId}`);
 
     // Step 4: Git push
@@ -143,7 +143,7 @@ uploadRouter.post('/resume', async (req, res) => {
     });
 
     sendStatus('saving');
-    const journalId = await saveJournal(extractionResult);
+    const journalId = await saveJournal(extractionResult, imagePaths);
     
     sendStatus('pushing');
     try {

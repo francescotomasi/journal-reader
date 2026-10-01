@@ -108,6 +108,21 @@ export default function ArticlePage() {
           className="article-body"
           style={{ fontFamily: 'var(--font-body)', fontSize: 'clamp(1rem, 2.5vw, 1.1rem)', color: 'var(--color-ink)', maxWidth: '65ch', marginLeft: 'auto', marginRight: 'auto' }}
         >
+          {article.media && article.media.length > 0 && (
+            <div style={{ marginBottom: '2rem' }}>
+              {article.media.map((m, i) => m.url && (
+                <figure key={i} style={{ margin: '0 0 1.5rem 0' }}>
+                  <img src={`${import.meta.env.BASE_URL}${m.url}`} alt={m.caption || ''} style={{ width: '100%', height: 'auto', display: 'block', borderRadius: '4px', border: '1px solid var(--color-rule)' }} />
+                  {m.caption && (
+                    <figcaption style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8rem', color: 'var(--color-ink-muted)', marginTop: '0.5rem', textAlign: 'center' }}>
+                      {m.caption}
+                    </figcaption>
+                  )}
+                </figure>
+              ))}
+            </div>
+          )}
+
           {paragraphs.map((text, i) => (
             <p key={i}>{text}</p>
           ))}

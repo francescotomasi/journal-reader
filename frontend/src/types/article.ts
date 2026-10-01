@@ -1,3 +1,10 @@
+export interface ArticleMedia {
+  type: 'chart' | 'map';
+  url: string;
+  caption?: string;
+  box?: [number, number, number, number];
+}
+
 export interface Article {
   id: string;
   title: string;
@@ -6,6 +13,7 @@ export interface Article {
   category?: string;
   page?: number;
   isHighlight: boolean;
+  media?: ArticleMedia[];
 }
 
 export interface Journal {

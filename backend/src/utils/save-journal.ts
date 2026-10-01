@@ -1,9 +1,18 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { cropImage } from './image-cropper.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+interface ArticleMedia {
+  type: 'chart' | 'map';
+  caption: string;
+  box?: [number, number, number, number];
+  page?: number;
+  url?: string;
+}
 
 interface ArticleData {
   id: string;
@@ -13,6 +22,7 @@ interface ArticleData {
   category?: string;
   page?: number;
   isHighlight: boolean;
+  media?: ArticleMedia[];
 }
 
 interface ExtractionResult {
@@ -38,8 +48,9 @@ const FRONTEND_DATA_DIR = path.join(__dirname, '..', '..', '..', 'frontend', 'pu
 /**
  * Saves extracted journal data to the frontend's public data directory.
  * Updates the index.json file with the new entry.
+ * Also crops requested media images and saves them in the public directory.
  */
-export async function saveJournal(extraction: ExtractionResult): Promise<string> {
+export async function saveJournal(extraction: ExtractionResult, imagePaths: string[] = []): Promise<string> {
   // Ensure data directory exists
   mkdirSync(FRONTEND_DATA_DIR, { recursive: true });
 
@@ -50,6 +61,36 @@ export async function saveJournal(extraction: ExtractionResult): Promise<string>
     .replace(/(^-|-$)/g, '');
   const journalId = `${extraction.date}_${slugName}`;
   const fileName = `${journalId}.json`;
+  const imagesDirName = `${journalId}_images`;
+  const imagesDirPath = path.join(FRONTEND_DATA_DIR, imagesDirName);
+
+  // Process media and crop images
+  for (const article of extraction.articles) {
+    if (article.media && article.media.length > 0) {
+      for (let i = 0; i < article.media.length; i++) {
+        const media = article.media[i];
+        if (media.box && media.page && typeof media.page === 'number') {
+          // Identify the source image. page is 1-indexed.
+          const sourcePath = imagePaths.find(p => {
+             const m = path.basename(p).match(/\d+/);
+             return m && parseInt(m[0], 10) === media.page;
+          }) || imagePaths[media.page - 1];
+
+          if (sourcePath && existsSync(sourcePath)) {
+            const imageName = `${article.id}_media_${i}.png`;
+            const destPath = path.join(imagesDirPath, imageName);
+            try {
+              await cropImage(sourcePath, destPath, media.box);
+              // Set the public URL relative to frontend
+              media.url = `data/journals/${imagesDirName}/${imageName}`;
+            } catch (err) {
+              console.warn(`   ⚠️ Errore ritaglio immagine per articolo ${article.id}:`, err);
+            }
+          }
+        }
+      }
+    }
+  }
 
   // Build the journal JSON
   const journal = {

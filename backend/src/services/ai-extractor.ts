@@ -17,7 +17,7 @@ interface ExtractionResult {
     category?: string;
     page?: number;
     isHighlight: boolean;
-    media?: Array<{ type: "chart" | "map"; caption: string; box: [number, number, number, number]; page: number }>;
+    media?: Array<{ type: "photo" | "chart" | "map"; caption: string; box: [number, number, number, number]; page: number }>;
   }>;
 }
 
@@ -35,12 +35,10 @@ REGOLE IMPORTANTI:
 1. La PRIMA PAGINA del giornale è tipicamente una pagina di sommario/anteprima con i titoli degli articoli principali e brevi anticipazioni. La maggior parte di questi articoli viene ripresa nelle pagine successive con il testo completo. Solo 1-2 articoli della prima pagina sono pezzi unici che NON si ripetono nel resto del giornale.
 
 2. FOTO, GRAFICI E MAPPE:
-   - Devi IGNORARE COMPLETAMENTE foto di persone, facce, politici, pubblicità o immagini generiche decorative.
-   - DEVI INVECE TROVARE E INCLUDERE:
-     a) Grafici di trend (es. istogrammi, linee di livello, torte, indici di prezzo, grafici economici).
-     b) Mappe geografiche esplicative (es. mappe geopolitiche di guerra, mappe di regioni o città).
-   - Quando associ uno di questi grafici/mappe a un articolo, devi restituire il suo bounding box nel formato [ymin, xmin, ymax, xmax] espresso in valori normalizzati da 0 a 1000 rispetto all'intera pagina.
-   - Il bounding box [0,0,1000,1000] indica l'intera pagina. Calcola le coordinate esatte dell'immagine.
+   - Trova e includi le FOTO, i GRAFICI o le MAPPE che sono direttamente pertinenti o allegati all'articolo (es. foto di cronaca, moda, cultura, volti pertinenti, mappe geopolitiche, grafici economici).
+   - Devi IGNORARE COMPLETAMENTE le pubblicità, i piccoli loghi decorativi del giornale e i contenuti non giornalistici.
+   - Quando associ un'immagine (foto/grafico/mappa) a un articolo, devi restituire il suo bounding box nel formato [ymin, xmin, ymax, xmax] espresso in valori normalizzati da 0 a 1000 rispetto all'intera pagina.
+   - Il bounding box [0,0,1000,1000] indica l'intera pagina. Calcola le coordinate esatte dell'immagine all'interno della pagina.
 
 3. Per ogni articolo, estrai:
    - "title": il titolo principale dell'articolo (OBBLIGATORIO)
@@ -49,7 +47,7 @@ REGOLE IMPORTANTI:
    - "category": la sezione/rubrica (es. "Economia", "Cronaca", "Esteri") — spesso indicata nell'intestazione della pagina
    - "page": il numero di pagina (se visibile nell'immagine)
    - "isHighlight": true se l'articolo è uno dei pezzi principali/di apertura
-   - "media": array di oggetti { type: "chart" | "map", caption: "didascalia o breve descrizione", box: [ymin, xmin, ymax, xmax], page: numero_di_pagina }. Il campo "page" DEVE corrispondere al numero di pagina in cui si trova l'immagine (es. 2). Inserisci qui grafici e mappe pertinenti all'articolo. Se non ce ne sono, ometti il campo.
+   - "media": array di oggetti { type: "photo" | "chart" | "map", caption: "didascalia o breve descrizione", box: [ymin, xmin, ymax, xmax], page: numero_di_pagina }. Il campo "page" DEVE corrispondere al numero di pagina in cui si trova l'immagine (es. 2). Inserisci qui foto, grafici e mappe pertinenti all'articolo. Se non ce ne sono, ometti il campo.
 
 3. NON duplicare articoli: se un articolo della prima pagina viene ripreso nelle pagine interne con più testo, crea UN SOLO articolo usando il testo più completo delle pagine interne, ma mantenendo il titolo più prominente.
 

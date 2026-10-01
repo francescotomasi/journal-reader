@@ -1,5 +1,5 @@
 export interface ArticleMedia {
-  type: 'chart' | 'map';
+  type: 'photo' | 'chart' | 'map';
   url: string;
   caption?: string;
   box?: [number, number, number, number];

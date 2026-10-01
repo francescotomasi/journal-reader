@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 interface ArticleMedia {
-  type: 'chart' | 'map';
+  type: 'photo' | 'chart' | 'map';
   caption: string;
   box?: [number, number, number, number];
   page?: number;

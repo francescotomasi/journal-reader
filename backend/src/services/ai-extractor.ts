@@ -82,18 +82,44 @@ Analizza ora le immagini delle pagine del giornale fornite e restituisci il JSON
  * Calls the Antigravity CLI (agy) with page images to extract articles via Gemini Vision.
  * Uses --print to run non-interactively, piping the prompt via stdin.
  */
+import { statSync } from 'fs';
+
+function getPageNum(p: string): number {
+  const m = require('path').basename(p).match(/\d+/);
+  return m ? parseInt(m[0], 10) : 1;
+}
+
 export async function extractArticles(imagePaths: string[], onProgress?: (msg: string) => void): Promise<ExtractionResult> {
   const agyPath = await findAgyPath();
-  const BATCH_SIZE = 8;
+  const MAX_BATCH_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
   const batches: string[][] = [];
   
-  for (let i = 0; i < imagePaths.length; i += BATCH_SIZE) {
-    const startIdx = i === 0 ? 0 : i - 1;
-    const endIdx = i + BATCH_SIZE;
-    batches.push(imagePaths.slice(startIdx, endIdx));
+  let currentBatch: string[] = [];
+  let currentBatchSize = 0;
+
+  for (let i = 0; i < imagePaths.length; i++) {
+    const p = imagePaths[i];
+    const size = statSync(p).size;
+    
+    // Se aggiungendo questa pagina superiamo i 5MB e il batch ha ALMENO 2 pagine
+    if (currentBatchSize + size > MAX_BATCH_SIZE_BYTES && currentBatch.length >= 2) {
+      batches.push([...currentBatch]);
+      // Nuovo blocco: inizia con l'ultima pagina del blocco precedente (sovrapposizione)
+      const lastPage = currentBatch[currentBatch.length - 1];
+      const lastPageSize = statSync(lastPage).size;
+      
+      currentBatch = [lastPage, p];
+      currentBatchSize = lastPageSize + size;
+    } else {
+      currentBatch.push(p);
+      currentBatchSize += size;
+    }
+  }
+  if (currentBatch.length > 0) {
+    batches.push([...currentBatch]);
   }
 
-  console.log(`   Pagine totali: ${imagePaths.length}, diviso in ${batches.length} blocchi (con sovrapposizione).`);
+  console.log(`   Pagine totali: ${imagePaths.length}, diviso in ${batches.length} blocchi (massimo 5MB a blocco, con sovrapposizione).`);
   
   const workDir = path.join(__dirname, '..', '..', 'page-images');
   let startBatch = 0;
@@ -117,10 +143,10 @@ export async function extractArticles(imagePaths: string[], onProgress?: (msg: s
       onProgress(`Analisi blocco ${b + 1} di ${batches.length} (${batchImages.length} pagine)...`);
     }
 
-    const startPageNum = (b === 0 ? 1 : (b * BATCH_SIZE));
-    const endPageNum = startPageNum + batchImages.length - 1;
+    const startPageNum = getPageNum(batchImages[0]);
+    const endPageNum = getPageNum(batchImages[batchImages.length - 1]);
 
-    const imageRefs = batchImages.map((p, i) => `![Pagina ${startPageNum + i}](${p})`).join('\n\n');
+    const imageRefs = batchImages.map(p => `![Pagina ${getPageNum(p)}](${p})`).join('\n\n');
     const fullPrompt = `${EXTRACTION_PROMPT}\n\n---\n\nATTENZIONE: Stai analizzando il blocco ${b + 1} di ${batches.length} del giornale. Le pagine incluse in questo blocco sono le pagine da ${startPageNum} a ${endPageNum}.\n\nLe pagine del giornale:\n\n${imageRefs}`;
     
     const promptFile = path.join(workDir, `_prompt_${b}.md`);

@@ -108,8 +108,12 @@ export default function ArticlePage() {
           className="article-body"
           style={{ fontFamily: 'var(--font-body)', fontSize: 'clamp(1rem, 2.5vw, 1.1rem)', color: 'var(--color-ink)', maxWidth: '65ch', marginLeft: 'auto', marginRight: 'auto' }}
         >
+          {paragraphs.map((text, i) => (
+            <p key={i}>{text}</p>
+          ))}
+
           {article.media && article.media.length > 0 && (
-            <div style={{ marginBottom: '2rem' }}>
+            <div style={{ marginTop: '2.5rem', marginBottom: '1rem' }}>
               {article.media.map((m, i) => m.url && (
                 <figure key={i} style={{ margin: '0 0 1.5rem 0' }}>
                   <img src={`${import.meta.env.BASE_URL}${m.url}`} alt={m.caption || ''} style={{ width: '100%', height: 'auto', display: 'block', borderRadius: '4px', border: '1px solid var(--color-rule)' }} />
@@ -122,10 +126,6 @@ export default function ArticlePage() {
               ))}
             </div>
           )}
-
-          {paragraphs.map((text, i) => (
-            <p key={i}>{text}</p>
-          ))}
         </div>
 
         {/* Navigation Footer */}

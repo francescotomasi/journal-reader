@@ -35,8 +35,10 @@ REGOLE IMPORTANTI:
 1. La PRIMA PAGINA del giornale è tipicamente una pagina di sommario/anteprima con i titoli degli articoli principali e brevi anticipazioni. La maggior parte di questi articoli viene ripresa nelle pagine successive con il testo completo. Solo 1-2 articoli della prima pagina sono pezzi unici che NON si ripetono nel resto del giornale.
 
 2. FOTO, GRAFICI E MAPPE:
-   - Trova e includi le FOTO, i GRAFICI o le MAPPE che sono direttamente pertinenti o allegati all'articolo (es. foto di cronaca, moda, cultura, volti pertinenti, mappe geopolitiche, grafici economici).
-   - Devi IGNORARE COMPLETAMENTE le pubblicità, i piccoli loghi decorativi del giornale e i contenuti non giornalistici.
+   - Trova e includi le FOTO, i GRAFICI o le MAPPE pertinenti all'articolo (es. foto di cronaca, mappe geopolitiche, grafici economici).
+   - IGNORA COMPLETAMENTE le foto che mostrano solo volti o primi piani di persone (es. ritratti di politici, giornalisti o intervistati).
+   - ECCEZIONE: Puoi includere foto di persone/volti SOLO se l'articolo appartiene palesemente alle rubriche "Moda", "Spettacoli" o "Cultura".
+   - IGNORA COMPLETAMENTE le pubblicità, i loghi decorativi e i contenuti non giornalistici.
    - Quando associ un'immagine (foto/grafico/mappa) a un articolo, devi restituire il suo bounding box nel formato [ymin, xmin, ymax, xmax] espresso in valori normalizzati da 0 a 1000 rispetto all'intera pagina.
    - Il bounding box [0,0,1000,1000] indica l'intera pagina. Calcola le coordinate esatte dell'immagine all'interno della pagina.
 

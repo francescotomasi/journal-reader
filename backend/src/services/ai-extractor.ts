@@ -85,7 +85,7 @@ Analizza ora le immagini delle pagine del giornale fornite e restituisci il JSON
 import { statSync } from 'fs';
 
 function getPageNum(p: string): number {
-  const m = require('path').basename(p).match(/\d+/);
+  const m = path.basename(p).match(/\d+/);
   return m ? parseInt(m[0], 10) : 1;
 }
 

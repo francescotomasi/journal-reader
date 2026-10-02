@@ -96,7 +96,7 @@ export async function extractArticles(imagePaths: string[], onProgress?: (msg: s
   const isSole24Ore = originalFileName.toLowerCase().includes('sole 24 ore') || originalFileName.toLowerCase().includes('sole24ore');
 
   if (isSole24Ore) {
-    console.log('📰 Rilevato "Sole 24 Ore": applicazione logica di suddivisione speciale (blocchi da 1 pagina con overlap, pag 2-3 unite).');
+    console.log('📰 Rilevato "Sole 24 Ore": applicazione logica di suddivisione speciale (blocchi da 1 pagina SENZA overlap, pag 2-3 unite).');
     let i = 0;
     while (i < imagePaths.length) {
       const pageNum = getPageNum(imagePaths[i]);
@@ -109,17 +109,10 @@ export async function extractArticles(imagePaths: string[], onProgress?: (msg: s
           batch.push(imagePaths[nextIndex]);
           nextIndex++;
         }
-        // Overlap +1
-        if (nextIndex < imagePaths.length) {
-          batch.push(imagePaths[nextIndex]);
-        }
         batches.push(batch);
-        i = nextIndex > i + 1 ? nextIndex - 1 : i + 1; // overlap
+        i = nextIndex;
       } else {
         const batch = [imagePaths[i]];
-        if (i + 1 < imagePaths.length) {
-          batch.push(imagePaths[i + 1]); // Overlap
-        }
         batches.push(batch);
         i++;
       }
@@ -152,7 +145,7 @@ export async function extractArticles(imagePaths: string[], onProgress?: (msg: s
     }
   }
 
-  console.log(`   Pagine totali: ${imagePaths.length}, diviso in ${batches.length} blocchi (con sovrapposizione).`);
+  console.log(`   Pagine totali: ${imagePaths.length}, diviso in ${batches.length} blocchi.`);
   
   const workDir = path.join(__dirname, '..', '..', 'page-images');
   let startBatch = 0;

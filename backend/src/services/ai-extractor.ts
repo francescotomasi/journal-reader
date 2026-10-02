@@ -84,16 +84,69 @@ Analizza ora le immagini delle pagine del giornale fornite e restituisci il JSON
  */
 export async function extractArticles(imagePaths: string[], onProgress?: (msg: string) => void): Promise<ExtractionResult> {
   const agyPath = await findAgyPath();
-  const BATCH_SIZE = 8;
+  // --- BATCHING DINAMICO ---
+  // Invece di usare un numero fisso di pagine, guardiamo al peso delle immagini generate.
+  // Giornali molto densi come "Il Sole 24 Ore" generano immagini JPEG molto più pesanti.
   const batches: string[][] = [];
+  let currentBatch: string[] = [];
+  let currentBatchSize = 0;
   
-  for (let i = 0; i < imagePaths.length; i += BATCH_SIZE) {
-    const startIdx = i === 0 ? 0 : i - 1;
-    const endIdx = i + BATCH_SIZE;
-    batches.push(imagePaths.slice(startIdx, endIdx));
+  // Impostiamo un target di circa 2.5 MB per blocco.
+  // Con le immagini in JPEG, Corriere (più leggero) avrà ~400KB/pagina -> ~6 pagine/blocco.
+  // Il Sole 24 Ore (molto denso) avrà ~1.2MB/pagina -> ~2 pagine/blocco.
+  const TARGET_BATCH_MB = 2.5; 
+  const MAX_PAGES = 8;
+  
+  // Assicuriamoci che statSync sia disponibile importandolo se necessario (dovrebbe esserlo da 'fs')
+  const { statSync } = await import('fs');
+
+  for (let i = 0; i < imagePaths.length; i++) {
+    const imgPath = imagePaths[i];
+    
+    // SOVRAPPOSIZIONE: Se il blocco è appena stato inizializzato e non siamo alla pagina 1,
+    // reinseriamo l'ultima pagina del blocco precedente per overlap (per articoli spezzati).
+    if (currentBatch.length === 0 && i > 0) {
+       const prevPath = imagePaths[i - 1];
+       currentBatch.push(prevPath);
+       currentBatchSize += statSync(prevPath).size / (1024 * 1024);
+    }
+    
+    const sizeMB = statSync(imgPath).size / (1024 * 1024);
+    const isPage3 = (i === 2); // (l'indice 2 corrisponde alla 3a pagina)
+    
+    if (currentBatch.length > 0) {
+       if (currentBatchSize + sizeMB > TARGET_BATCH_MB || currentBatch.length >= MAX_PAGES) {
+           // ECCEZIONE: Vogliamo tenere sempre unite la pagina 2 e 3 del PDF
+           if (isPage3 && currentBatch.length >= 1) {
+              // Non spezziamo il blocco ora
+           } else {
+              // Salviamo il blocco attuale e ne prepariamo uno nuovo
+              batches.push(currentBatch);
+              currentBatch = [];
+              currentBatchSize = 0;
+              
+              // Inseriamo di nuovo la sovrapposizione per il nuovo blocco
+              if (i > 0) {
+                 const prevPath = imagePaths[i - 1];
+                 currentBatch.push(prevPath);
+                 currentBatchSize += statSync(prevPath).size / (1024 * 1024);
+              }
+           }
+       }
+    }
+    currentBatch.push(imgPath);
+    currentBatchSize += sizeMB;
+  }
+  
+  if (currentBatch.length > 0) {
+    // Non aggiungere se è identico all'ultimo blocco o è solo una pagina di overlap finale inutile
+    if (batches.length === 0 || currentBatch.length > 1 || currentBatch[0] !== imagePaths[imagePaths.length - 1]) {
+        batches.push(currentBatch);
+    }
   }
 
-  console.log(`   Pagine totali: ${imagePaths.length}, diviso in ${batches.length} blocchi (con sovrapposizione).`);
+  console.log(`   Pagine totali: ${imagePaths.length}, divise dinamicamente in ${batches.length} blocchi.`);
+
   
   const workDir = path.join(__dirname, '..', '..', 'page-images');
   let startBatch = 0;
@@ -117,10 +170,20 @@ export async function extractArticles(imagePaths: string[], onProgress?: (msg: s
       onProgress(`Analisi blocco ${b + 1} di ${batches.length} (${batchImages.length} pagine)...`);
     }
 
-    const startPageNum = (b === 0 ? 1 : (b * BATCH_SIZE));
-    const endPageNum = startPageNum + batchImages.length - 1;
+    const firstImagePath = batchImages[0];
+    const startMatch = path.basename(firstImagePath).match(/\d+/);
+    const startPageNum = startMatch ? parseInt(startMatch[0], 10) : 1;
+    
+    const lastImagePath = batchImages[batchImages.length - 1];
+    const endMatch = path.basename(lastImagePath).match(/\d+/);
+    const endPageNum = endMatch ? parseInt(endMatch[0], 10) : startPageNum + batchImages.length - 1;
 
-    const imageRefs = batchImages.map((p, i) => `![Pagina ${startPageNum + i}](${p})`).join('\n\n');
+    const imageRefs = batchImages.map((p) => {
+       const m = path.basename(p).match(/\d+/);
+       const pNum = m ? parseInt(m[0], 10) : startPageNum;
+       return `![Pagina ${pNum}](${p})`;
+    }).join('\n\n');
+    
     const fullPrompt = `${EXTRACTION_PROMPT}\n\n---\n\nATTENZIONE: Stai analizzando il blocco ${b + 1} di ${batches.length} del giornale. Le pagine incluse in questo blocco sono le pagine da ${startPageNum} a ${endPageNum}.\n\nLe pagine del giornale:\n\n${imageRefs}`;
     
     const promptFile = path.join(workDir, `_prompt_${b}.md`);

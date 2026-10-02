@@ -130,7 +130,7 @@ export async function extractArticles(imagePaths: string[], onProgress?: (msg: s
       console.log(`   Analizzando blocco ${b + 1}/${batches.length}...`);
       const result = await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
         import('child_process').then(({ spawn }) => {
-          const agyProcess = spawn(agyPath, ['--model', 'Gemini 3.1 Pro (High)', '--dangerously-skip-permissions'], {
+          const agyProcess = spawn(agyPath, ['--model', 'Gemini 3.8 Flash (High)', '--dangerously-skip-permissions'], {
             env: { ...process.env },
           });
 

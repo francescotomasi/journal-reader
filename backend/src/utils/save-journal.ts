@@ -77,7 +77,7 @@ export async function saveJournal(extraction: ExtractionResult, imagePaths: stri
           }) || imagePaths[media.page - 1];
 
           if (sourcePath && existsSync(sourcePath)) {
-            const imageName = `${article.id}_media_${i}.png`;
+            const imageName = `${article.id}_media_${i}.webp`;
             const destPath = path.join(imagesDirPath, imageName);
             try {
               await cropImage(sourcePath, destPath, media.box);

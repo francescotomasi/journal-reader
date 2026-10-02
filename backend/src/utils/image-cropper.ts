@@ -45,6 +45,6 @@ export async function cropImage(
 
   await sharp(sourcePath)
     .extract({ left: safeLeft, top: safeTop, width: safeWidth, height: safeHeight })
-    .png()
+    .webp({ quality: 80 })
     .toFile(destPath);
 }

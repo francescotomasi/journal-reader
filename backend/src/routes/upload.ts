@@ -67,7 +67,7 @@ uploadRouter.post('/upload', upload.single('pdf'), async (req, res) => {
     console.log('🤖 Estrazione AI in corso...');
     const extractionResult = await extractArticles(imagePaths, (msg) => {
       sendStatus('extracting_progress', { message: msg });
-    });
+    }, file.originalname);
     console.log(`   ✅ ${extractionResult.articles.length} articoli estratti`);
 
     // Step 3: Save to frontend data directory
@@ -125,7 +125,7 @@ uploadRouter.post('/resume', async (req, res) => {
       throw new Error('Nessuna estrazione interrotta trovata.');
     }
 
-    const oldFiles = readdirSync(pageImagesDir).filter((f) => f.endsWith('.png'));
+    const oldFiles = readdirSync(pageImagesDir).filter((f) => f.endsWith('.jpg') || f.endsWith('.png'));
     if (oldFiles.length === 0) {
       throw new Error('Immagini non trovate.');
     }

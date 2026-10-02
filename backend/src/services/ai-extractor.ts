@@ -89,37 +89,70 @@ function getPageNum(p: string): number {
   return m ? parseInt(m[0], 10) : 1;
 }
 
-export async function extractArticles(imagePaths: string[], onProgress?: (msg: string) => void): Promise<ExtractionResult> {
+export async function extractArticles(imagePaths: string[], onProgress?: (msg: string) => void, originalFileName: string = ''): Promise<ExtractionResult> {
   const agyPath = await findAgyPath();
-  const MAX_BATCH_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
   const batches: string[][] = [];
   
-  let currentBatch: string[] = [];
-  let currentBatchSize = 0;
+  const isSole24Ore = originalFileName.toLowerCase().includes('sole 24 ore') || originalFileName.toLowerCase().includes('sole24ore');
 
-  for (let i = 0; i < imagePaths.length; i++) {
-    const p = imagePaths[i];
-    const size = statSync(p).size;
-    
-    // Se aggiungendo questa pagina superiamo i 5MB e il batch ha ALMENO 2 pagine
-    if (currentBatchSize + size > MAX_BATCH_SIZE_BYTES && currentBatch.length >= 2) {
-      batches.push([...currentBatch]);
-      // Nuovo blocco: inizia con l'ultima pagina del blocco precedente (sovrapposizione)
-      const lastPage = currentBatch[currentBatch.length - 1];
-      const lastPageSize = statSync(lastPage).size;
+  if (isSole24Ore) {
+    console.log('📰 Rilevato "Sole 24 Ore": applicazione logica di suddivisione speciale (blocchi da 1 pagina con overlap, pag 2-3 unite).');
+    let i = 0;
+    while (i < imagePaths.length) {
+      const pageNum = getPageNum(imagePaths[i]);
+      if (pageNum === 2) {
+        // Find page 3 if it exists
+        const p2 = imagePaths[i];
+        let nextIndex = i + 1;
+        const batch = [p2];
+        if (nextIndex < imagePaths.length && getPageNum(imagePaths[nextIndex]) === 3) {
+          batch.push(imagePaths[nextIndex]);
+          nextIndex++;
+        }
+        // Overlap +1
+        if (nextIndex < imagePaths.length) {
+          batch.push(imagePaths[nextIndex]);
+        }
+        batches.push(batch);
+        i = nextIndex > i + 1 ? nextIndex - 1 : i + 1; // overlap
+      } else {
+        const batch = [imagePaths[i]];
+        if (i + 1 < imagePaths.length) {
+          batch.push(imagePaths[i + 1]); // Overlap
+        }
+        batches.push(batch);
+        i++;
+      }
+    }
+  } else {
+    const MAX_BATCH_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+    let currentBatch: string[] = [];
+    let currentBatchSize = 0;
+
+    for (let i = 0; i < imagePaths.length; i++) {
+      const p = imagePaths[i];
+      const size = statSync(p).size;
       
-      currentBatch = [lastPage, p];
-      currentBatchSize = lastPageSize + size;
-    } else {
-      currentBatch.push(p);
-      currentBatchSize += size;
+      // Se aggiungendo questa pagina superiamo i 5MB e il batch ha ALMENO 2 pagine
+      if (currentBatchSize + size > MAX_BATCH_SIZE_BYTES && currentBatch.length >= 2) {
+        batches.push([...currentBatch]);
+        // Nuovo blocco: inizia con l'ultima pagina del blocco precedente (sovrapposizione)
+        const lastPage = currentBatch[currentBatch.length - 1];
+        const lastPageSize = statSync(lastPage).size;
+        
+        currentBatch = [lastPage, p];
+        currentBatchSize = lastPageSize + size;
+      } else {
+        currentBatch.push(p);
+        currentBatchSize += size;
+      }
+    }
+    if (currentBatch.length > 0) {
+      batches.push([...currentBatch]);
     }
   }
-  if (currentBatch.length > 0) {
-    batches.push([...currentBatch]);
-  }
 
-  console.log(`   Pagine totali: ${imagePaths.length}, diviso in ${batches.length} blocchi (massimo 5MB a blocco, con sovrapposizione).`);
+  console.log(`   Pagine totali: ${imagePaths.length}, diviso in ${batches.length} blocchi (con sovrapposizione).`);
   
   const workDir = path.join(__dirname, '..', '..', 'page-images');
   let startBatch = 0;

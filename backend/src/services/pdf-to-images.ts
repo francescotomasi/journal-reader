@@ -14,7 +14,7 @@ const pageImagesDir = path.join(__dirname, '..', '..', 'page-images');
 export async function convertPdfToImages(pdfPath: string): Promise<string[]> {
   // Clean up old images
   if (existsSync(pageImagesDir)) {
-    const oldFiles = readdirSync(pageImagesDir).filter((f) => f.endsWith('.jpeg') || f.endsWith('.png'));
+    const oldFiles = readdirSync(pageImagesDir).filter((f) => f.endsWith('.jpg') || f.endsWith('.png'));
     for (const f of oldFiles) {
       rmSync(path.join(pageImagesDir, f), { force: true });
     }
@@ -24,7 +24,7 @@ export async function convertPdfToImages(pdfPath: string): Promise<string[]> {
     density: 200, // DPI — good balance between quality and file size
     saveFilename: 'page',
     savePath: pageImagesDir,
-    format: 'jpeg',
+    format: 'jpg',
     width: 2000, // Pixel width — enough for multi-column newspaper text
     height: 2800,
   });
